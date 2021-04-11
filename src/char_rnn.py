@@ -20,6 +20,8 @@ def send(thing):
     return thing
 
 class TokenSequencePredictor:
+  """A neural net which predicts sequences of tokens."""
+
   @abstractmethod
   def forward(self, input: Tensor, memory: Tensor = None) -> (Tensor, Tensor):
     """Given an input tensor and an optional memory tensor, make a prediction.
@@ -40,7 +42,10 @@ class TokenSequencePredictor:
 
     raise NotImplementedError
 
-class CharRnnCore(nn.Module):
+class CharRnnCore(nn.Module, TokenSequencePredictor):
+  """The differentiable part of a CharRnn (a recurrent neural net which attempts
+  to predict sequences of characters)."""
+
   def __init__(self, alphabet_size: int, hidden_size: int, num_layers: int):
     super().__init__()
 
@@ -71,6 +76,9 @@ class CharRnnCore(nn.Module):
     return output, new_memory
 
 class CharRnn(nn.Module, TokenSequencePredictor):
+  """A recurrent neural net which attempts to predict sequences
+  of characters."""
+
   def __init__(self, alphabet: str, hidden_size: int = 100, num_layers: int = 1):
     super().__init__()
 
