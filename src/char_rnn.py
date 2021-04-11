@@ -48,7 +48,7 @@ class CharRnnCore(nn.Module):
     self.hidden_size = hidden_size
 
     self.encoder = nn.Embedding(alphabet_size, hidden_size)
-    self.rnn = nn.GRU(input_size=hidden_size, hidden_size=hidden_size, num_layers=1, batch_first=True)
+    self.rnn = nn.GRU(input_size=hidden_size, hidden_size=hidden_size, num_layers=num_layers, batch_first=True)
     self.decoder = nn.Linear(hidden_size, alphabet_size)
 
     send(self)
@@ -155,7 +155,7 @@ class CharRnn(nn.Module, TokenSequencePredictor):
 
     return ''.join([self.alphabet[i] for i in predictions])
 
-  def sample(self, input: str):
+  def sample(self, input: str, length: int = None):
     prediction: ('batch_size', 'alphabet_size') = None
     memory: ('batch_size', 'hidden_size') = None
 
@@ -163,14 +163,17 @@ class CharRnn(nn.Module, TokenSequencePredictor):
       input_tensor: ('batch_size') = send(torch.LongTensor([self.char_to_index(c)]))
       prediction, memory = self.forward(input_tensor, memory)
 
-    while True:
+    count = 0
+
+    while length is None or count < length:
       c = self.alphabet[torch.argmax(prediction.squeeze(dim=0))]
       yield c
+      count += 1
 
       input_tensor: ('batch_size') = send(torch.LongTensor([self.char_to_index(c)]))
       prediction, memory = self.forward(input_tensor, memory)
 
-  def sample_randomly(self, input: str, temperature: float = 1.0):
+  def sample_randomly(self, input: str, length: int = None, temperature: float = 1.0):
     prediction: ('batch_size', 'alphabet_size') = None
     memory: ('batch_size', 'hidden_size') = None
 
@@ -178,9 +181,53 @@ class CharRnn(nn.Module, TokenSequencePredictor):
       input_tensor: ('batch_size') = send(torch.LongTensor([self.char_to_index(c)]))
       prediction, memory = self.forward(input_tensor, memory)
 
-    while True:
+    count = 0
+
+    while length is None or count < length:
       c = self.alphabet[torch.multinomial(prediction.squeeze(dim=0)**(1/temperature), num_samples=1)]
       yield c
+      count += 1
 
       input_tensor: ('batch_size') = send(torch.LongTensor([self.char_to_index(c)]))
       prediction, memory = self.forward(input_tensor, memory)
+
+class CharRnnTrainer():
+  def __init__(self, model: CharRnn, target_output: str, chunk_size: int = 200, batch_size: int = 1):
+    self.model = model
+    self.optim = torch.optim.Adam(model.parameters())
+
+    self.target_output = target_output
+
+    self.chunk_size = chunk_size
+
+    self.corpus_tensor: ('length')
+    self.corpus_tensor = model.str_to_indices(target_output)
+
+    self.batch_size = batch_size
+
+  def step(self):
+    self.model.zero_grad()
+
+    training_tensor: ('batch_size', 'length')
+    if self.corpus_tensor.size(0) <= self.chunk_size:
+      training_tensor = self.corpus_tensor[None,:]
+    else:
+      max_offset = self.corpus_tensor.size(0) - self.chunk_size
+      offsets = send(torch.randint(low=0, high=max_offset + 1, size=(self.batch_size,)))
+      training_tensors = [self.corpus_tensor[offset:offset+self.chunk_size] for offset in offsets]
+      training_tensor = torch.stack(training_tensors, dim=0)
+
+    output: ('batch_size', 'length', 'alphabet_size')
+    output, memory = self.model.forward(training_tensor[:,:-1])
+
+    target_tensor: ('batch_size', 'length', 'alphabet_size')
+    target_tensor = self.model.string_tensor_to_one_hot(training_tensor[:,1:])
+
+    predicted_probs = (output * target_tensor).sum(2)
+
+    loss = -predicted_probs.log().mean()
+
+    loss.backward()
+    self.optim.step()
+
+    return loss
