@@ -180,6 +180,7 @@ class CharRnn(nn.Module, TokenSequencePredictor):
 
       input_tensor: ('batch_size') = send(torch.LongTensor([self.char_to_index(c)]))
       prediction, memory = self.forward(input_tensor, memory)
+      prediction, memory = prediction.detach(), memory.detach()
 
   def sample_randomly(self, input: str, length: int = None, temperature: float = 1.0):
     prediction: ('batch_size', 'alphabet_size') = None
@@ -198,6 +199,7 @@ class CharRnn(nn.Module, TokenSequencePredictor):
 
       input_tensor: ('batch_size') = send(torch.LongTensor([self.char_to_index(c)]))
       prediction, memory = self.forward(input_tensor, memory)
+      prediction, memory = prediction.detach(), memory.detach()
 
 class CharRnnTrainer():
   def __init__(self, model: CharRnn, target_output: str, chunk_size: int = 200, batch_size: int = 1):
