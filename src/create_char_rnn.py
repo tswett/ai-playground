@@ -20,7 +20,8 @@ parser.add_argument('--model_name', help="The path to store the model at")
 args = parser.parse_args()
 
 print("Reading document...")
-document = open(args.dataset, encoding=args.char_encoding, errors=args.char_errors).read()
+with open(args.dataset, encoding=args.char_encoding, errors=args.char_errors) as document_file:
+    document = document_file.read()
 document_alphabet = ''.join(set(document))
 
 print("Creating model...")
@@ -29,11 +30,16 @@ document_model = CharRnn(
 
 print("Creating trainer...")
 document_trainer = CharRnnTrainer(
-    document_model, document, chunk_size=args.chunk_size,
+    document_model,
+    document,
+    dataset_filename = args.dataset,
+    char_encoding = args.char_encoding,
+    char_errors = args.char_errors,
+    chunk_size=args.chunk_size,
     batch_size=args.batch_size)
 
 print("Writing trainer to file...")
-output_file = open(args.model_name, mode='wb')
-pickle.dump(document_trainer, output_file)
+with open(args.model_name, mode='wb') as output_file:
+    pickle.dump(document_trainer, output_file)
 
 print("Done.")

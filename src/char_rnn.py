@@ -202,18 +202,56 @@ class CharRnn(nn.Module, TokenSequencePredictor):
       prediction, memory = prediction.detach(), memory.detach()
 
 class CharRnnTrainer():
-  def __init__(self, model: CharRnn, target_output: str, chunk_size: int = 200, batch_size: int = 1):
+  def __init__(self,
+               model: CharRnn,
+               target_output: str = None,
+               dataset_filename: str = None,
+               char_encoding: str = 'utf-8',
+               char_errors: str = 'replace',
+               chunk_size: int = 200,
+               batch_size: int = 1):
     self.model = model
     self.optim = torch.optim.Adam(model.parameters())
 
     self.target_output = target_output
 
+    if target_output is not None:
+      self.corpus_tensor: ('length')
+      self.corpus_tensor = model.str_to_indices(target_output)
+
+    self.dataset_filename = dataset_filename
+    self.char_encoding = char_encoding
+    self.char_errors = char_errors
+
     self.chunk_size = chunk_size
-
-    self.corpus_tensor: ('length')
-    self.corpus_tensor = model.str_to_indices(target_output)
-
     self.batch_size = batch_size
+
+  def __getstate__(self):
+    state = self.__dict__.copy()
+    del state['target_output']
+    del state['corpus_tensor']
+    return state
+
+  def load_corpus(self,
+                  dataset_filename: str = None,
+                  char_encoding: str = None,
+                  char_errors: str = None):
+    dataset_filename = dataset_filename or self.dataset_filename
+    char_encoding = char_encoding or self.char_encoding
+    char_errors = char_errors or self.char_errors
+
+    corpus = open(dataset_filename, encoding=char_encoding, errors=char_errors).read()
+    actual_alphabet = set(corpus)
+    expected_alphabet = set(self.model.alphabet)
+
+    bad_characters = actual_alphabet.difference(expected_alphabet)
+    if bad_characters:
+      raise ValueError(
+        f"The given corpus contained the following characters which are not in the model's " +
+        f"alphabet: {bad_characters}")
+
+    self.target_output = corpus
+    self.corpus_tensor = self.model.str_to_indices(corpus)
 
   def step(self):
     self.model.zero_grad()

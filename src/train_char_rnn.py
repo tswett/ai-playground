@@ -9,6 +9,9 @@ char_rnn.device_to_use = 'cpu'
 parser = argparse.ArgumentParser(
     description="Train and sample from a CharRnnTrainer.")
 
+parser.add_argument('--dataset', help="A text file to use as the dataset")
+parser.add_argument('--char_encoding', help="The character encoding to use when reading from the file")
+parser.add_argument('--char_errors', help="The error behavior when encountering unrecognizable characters in the file")
 parser.add_argument('--model_name', help="The path to retrieve the model from")
 parser.add_argument('--save_model_name', help="The path to save new models at")
 parser.add_argument('--save_every', type=int, help="Save the model every this-many training steps")
@@ -16,12 +19,16 @@ parser.add_argument('--sample_chars', type=int, default=20, help="Sample this ma
 
 args = parser.parse_args()
 
-trainer_file = open(args.model_name, mode='rb')
-trainer = pickle.load(trainer_file)
-trainer_file.close()
+print("Loading model...")
+with open(args.model_name, mode='rb') as trainer_file:
+    trainer = pickle.load(trainer_file)
+
+print("Loading training dataset...")
+trainer.load_corpus(args.dataset, args.char_encoding, args.char_errors)
 
 sampler = trainer.model.sample_randomly('. ', temperature=0.8)
 
+print("Starting training.")
 for i in itertools.count(start=1):
     loss = trainer.step()
 
