@@ -8,7 +8,7 @@ machine learning models.
 The Feynman quote demo trains a small neural net on a quote from Richard
 Feynman. Simply run:
 
-    python -i demos/feynman.py
+    python -m ai_playground.demos.feynman
 
 The demo will start by creating a neural net and asking it to produce some text.
 The initial prediction will be total garbage, since the neural net hasn't been
@@ -37,7 +37,7 @@ net thinks is more or less likely.
 The Britannica demo creates a neural net and trains it on a section of the
 Encyclopedia Britannica. Run:
 
-    python -i demos/britannica.py
+    python -m ai_playground.demos.britannica
 
 The demo will both train and sample from the neural net at the same time, so
 that you get to constantly see what the neural net has learned.
@@ -67,7 +67,7 @@ With this command, there is no way to save the neural net's progress!
 The playground comes with an Encyclopedia Britannica model that you can sample
 from right away. Just run:
 
-    python src/train_char_rnn.py --model_name models/britannica-2021-04-17-19-59-12 --sample_chars 2000 --save_every 1000000
+    PYTHONPATH=ai_playground python -m ai_playground.train_char_rnn --model_name models/britannica-2021-04-17-19-59-12 --sample_chars 2000 --save_every 1000000
 
 The neural net will start to produce some text that will look similar to this:
 
@@ -77,20 +77,23 @@ The neural net will start to produce some text that will look similar to this:
     1 1.1970 expression with the lifetiment of the writers in the ancient instrudent
     1 1.1970 of such as the later eggs of Épinal.
 
+(The PYTHONPATH bit at the beginning is needed because this is an older model
+file which uses an import path which is no longer correct.)
+
 ### Creating and training your own neural net
 
 To train a neural net of your own, start by finding a text file you like and
 putting it in the `datasets` directory. Name it something like `mydata.txt`.
 Then run:
 
-    python src/create_char_rnn.py --dataset datasets/mydata.txt --hidden_size 128 --num_layers 3 --model_name models/mymodel
+    python -m ai_playground.create_char_rnn --dataset datasets/mydata.txt --hidden_size 128 --num_layers 3 --model_name models/mymodel
 
 This will create a model file called `models/mymodel`, but won't do any
 training.
 
 Next, run:
 
-    python src/train_char_rnn.py --model_name models/mymodel --save_model_name models/mymodel --save_every 500
+    python -m ai_playground.train_char_rnn --model_name models/mymodel --save_model_name models/mymodel --save_every 500
 
 (It's safe to use `models/mymodel` as the output filename because
 `train_char_rnn.py` will append the date and time to this filename, in order to
